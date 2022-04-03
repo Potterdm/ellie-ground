@@ -16,7 +16,7 @@ This code runs on the DAQ ESP32 and has a couple of main functions.
 //define pins to use for the various sensors and connetcions. define takes up less space on the chip
 #define ONBOARD_LED  12
 #define PT1DOUT 26
-#define PT2DOUT 16
+#define PT2DOUT 44
 
 #define CLK 25
 #define FM 4
@@ -29,10 +29,10 @@ This code runs on the DAQ ESP32 and has a couple of main functions.
 
 //Initialize flow meter variables for how it computes the flow ammount
 float currentMillis = 0;
-float goalTime = 100;
+float goalTime = 100;        // [ms]
 float currReading1;
 float currReading2;
-float loopTime=100;
+
 
 //FM counter
 float fmcount;
@@ -59,19 +59,17 @@ int ADC_Max = 4096;
 // REPLACE WITH THE MAC Address of your receiver
 uint8_t broadcastAddress[] = {0xC4, 0xDD, 0x57, 0x9E, 0x91, 0x6C};
 
-int count=3;
-
 
 // Define variables to store readings to be sent
-float pt1=1;
-float pt2=1;
-float pt3=1;
-float pt4=1;
-float pt5=1;
-float lc1=1;
-float lc2=1;
-float lc3=1;
-float fm=2;
+float pt1;
+float pt2;
+float pt3;
+float pt4;
+float pt5;
+float lc1;
+float lc2;
+float lc3;
+float fm;
 //the following are only used in the oposite diretcion, they are included because it may be necessary for the structure to be the same in both directions
 int S1; int S2; int S1S2; int I;
 
@@ -83,11 +81,6 @@ int incomingS1;
 int incomingS2;
 int incomingS1S2;
 bool incomingI;
-
-
-float startTime;
-float endTime;
-float timeDiff;
 
 // Variable to store if sending data was successful
 String success;
@@ -141,7 +134,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   S2 = Commands.S2;
   S1S2 = Commands.S1S2;
   I = Commands.I;
-
+  //Serial.print("IT IS WORKING");
 }
 
 
@@ -154,16 +147,13 @@ void setup() {
 
 
 //attach flowmeter pin
-  //pinMode(FM, INPUT_PULLUP);
+  pinMode(FM, INPUT_PULLUP);
 
 //set gains for pt pins
   scale1.begin(PT1DOUT, CLK);
   scale1.set_gain(64);
   scale2.begin(PT2DOUT, CLK);
   scale2.set_gain(64);
-//Flowmeter untreupt
- pinMode(FM, INPUT);           //Sets the pin as an input
- attachInterrupt(FM, Flow, RISING);
 
   Serial.begin(115200);
 
@@ -198,7 +188,6 @@ void setup() {
 
 
 void loop() {
-  startTime=millis();
   //Set LED back to low
     digitalWrite(ONBOARD_LED,LOW);
 
@@ -210,20 +199,22 @@ void loop() {
 
 //UPDATE SERVO POSITIONS
   //Check new data for servo status updates
-  switch (S1) {
-    case 0:
-        servo1.write(0);
-        break;
-     case 45:
-        servo1.write(45);
-        break;
-    case 90:
-        servo1.write(90);
-        break;
-    case 130:
-        servo1.write(135);
-        break;
-  }
+
+  //switch (S1) {
+    //case 0:
+        //servo1.write(0);
+        //break;
+    //case 45:
+        //servo1.write(45);
+        //break;
+    //case 90:
+        //servo1.write(90);
+        //break;
+    //case 130:
+        //servo1.write(135);
+        //break;
+    servo1.write(S1);
+  //}
 
   getReadings();
 
@@ -250,37 +241,39 @@ void loop() {
   else {
     Serial.println("Error sending the data");
   }
-
-  endTime=millis();
-  timeDiff=endTime-startTime;
-//  if (timeDiff<loopTime) {
-//    delay(timeDiff);
-//  }
-
+  delay(50);
 }
 
 
 
 void getReadings(){
   currentMillis = millis();
- // if (goalTime < currentMillis) {
- //
- //   goalTime = currentMillis + 50;
- //   flowRate=fmcount;
- //   fmcount=0;
- // }
+  fmcount = 0;
+  while (millis() - currentMillis < goalTime) {
+    currentState = digitalRead(FM);
+    if (!(currentState == lastState)) {
+      lastState = currentState;
+      fmcount += 1;
+    }
+  }
+  flowRate = fmcount * 1000 / goalTime;
+  //if (goalTime < currentMillis) {
 
+    //goalTime = currentMillis + 50;
+    //flowRate=fmcount;
+    //fmcount=0;
+  //}
 
+    //currentState = digitalRead(FM);
+    //if (!(currentState == lastState)) {
+      //lastState = currentState;
+      //fmcount+=1;
+    //}
 
-  fm =count;  // Print the integer part of the variable
-  count=4;
+  fm =int(flowRate*10000+1);  // Print the integer part of the variable
+
    pt1 = scale1.read();
 
    pt2 = scale2.read();
 
-}
-
-void Flow()
-{
-   count++; //Every time this function is called, increment "count" by 1
 }
