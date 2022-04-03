@@ -21,6 +21,7 @@ float incomingFM = 0;
 float incomingLC1 = 0;
 float incomingLC2 = 0;
 float incomingLC3 = 0;
+float pressedTime = 0;
 esp_now_peer_info_t peerInfo;
 bool pressed = false;
 bool prevPressed = false;
@@ -130,14 +131,23 @@ if (valveOpened) {
   digitalWrite(LEDpin,LOW);
 }
 
+if (prevPressed && (millis() - pressedTime >= 5000)) {
+  Commands.S1 = 90 - servo1_curr;
+  servo1_curr = 90 - servo1_curr;
+  prevPressed = false;
+
+}
+
 
   if (pressed && !prevPressed) {
     Commands.S1 = 90 - servo1_curr;
     servo1_curr = 90 - servo1_curr;
+    pressedTime = millis();
+    prevPressed = pressed;
     //remove the following line with code that detects the status of the valve
   //  valveOpened = !valveOpened;
   }
-  prevPressed = pressed;
+  //prevPressed = pressed;
 
   //servo2control
 //  currval2 = digitalRead(buttonpin2);
